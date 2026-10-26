@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Porsche · Painel de vendas</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #121212;
+    --card: #1c1c1c;
+    --line: #2e2e2e;
+    --text: #f4f1ea;
+    --muted: #a39e94;
+    --red: #d5001c;
+    --gold: #c4a574;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: radial-gradient(1200px 500px at 10% -10%, #2a1216, transparent), var(--bg);
+    color: var(--text);
+    font-family: Inter, sans-serif;
+  }
+  header, main { width: min(1180px, calc(100% - 32px)); margin: 0 auto; }
+  header { padding: 36px 0 12px; }
+  .eyebrow { letter-spacing: .22em; text-transform: uppercase; color: var(--gold); font-size: 12px; }
+  h1 { font-family: "Space Grotesk", sans-serif; font-weight: 600; font-size: clamp(32px, 5vw, 52px); margin: 8px 0; }
+  p.lead { color: var(--muted); max-width: 720px; line-height: 1.5; }
+  .filters, .kpis, .grid, .review { display: grid; gap: 14px; }
+  .filters { grid-template-columns: repeat(4, 1fr); margin: 22px 0; }
+  label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+  select {
+    width: 100%; background: #0e0e0e; color: var(--text); border: 1px solid var(--line);
+    border-radius: 12px; padding: 12px; font: inherit;
+  }
+  .kpis { grid-template-columns: repeat(4, 1fr); }
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 18px;
+    box-shadow: 0 16px 40px rgba(0,0,0,.25);
+  }
+  .num { font-family: "Space Grotesk", sans-serif; font-size: clamp(28px, 4vw, 42px); margin: 8px 0 0; }
+  .grid { grid-template-columns: 1.2fr .8fr; }
+  h2 { font-family: "Space Grotesk", sans-serif; font-size: 20px; margin: 0 0 14px; }
+  .bar-row { display: grid; grid-template-columns: 130px 1fr 92px; gap: 8px; align-items: center; margin: 8px 0; font-size: 13px; }
+  .track { height: 8px; background: #2a2a2a; border-radius: 99px; overflow: hidden; }
+  .fill { height: 100%; background: linear-gradient(90deg, var(--red), #ff4d4d); border-radius: 99px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: 500; }
+  .note { color: var(--muted); font-size: 12px; margin-top: 10px; }
+  footer { color: var(--muted); font-size: 12px; padding: 28px 0 40px; }
+  @media (max-width: 860px) {
+    .filters, .kpis, .grid { grid-template-columns: 1fr; }
+    .bar-row { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="eyebrow">Porsche · vendas</div>
+  <h1>Painel comercial</h1>
+  <p class="lead">Receita por modelo, força regional e mix de pagamento. Datas inválidas ficam fora da série temporal e aparecem na revisão. Vendas canceladas não entram na receita.</p>
+</header>
+<main>
+  <section class="filters">
+    <div><label>Modelo</label><select id="fModel"></select></div>
+    <div><label>Ano da venda</label><select id="fYear"></select></div>
+    <div><label>Cidade</label><select id="fCity"></select></div>
+    <div><label>Pagamento</label><select id="fPay"></select></div>
+  </section>
+  <section class="kpis" id="kpis"></section>
+  <section class="grid" style="margin-top:14px">
+    <article class="card"><h2>Quais modelos geram receita?</h2><div id="models"></div></article>
+    <article class="card"><h2>Onde a receita é mais forte?</h2><div id="states"></div></article>
+  </section>
+  <section class="card" style="margin-top:14px">
+    <h2>Como o pagamento se relaciona com o valor?</h2>
+    <div id="pays"></div>
+  </section>
+  <footer>Indicadores financeiros usam preço sanitizado &gt; 0 e excluem status Cancelled.</footer>
+</main>
+<script>
+const rows = [
+["6","INVALID","718 Cayman",2022,79500,"Credit Card","Boston","MA","Delivered"],
+["7","2024-03-14","911 Turbo S",2024,235000,"Wire Transfer","Seattle","WA","Delivered"],
+["8","2024-04-18","Cayenne Coupe",2023,112750,"Financing","Austin","TX","In Transit"],
+["9","INVALID","Macan S",2021,68900,"Cash","Denver","CO","Pending"],
+["10","2024-05-22","Taycan 4S",2024,121000,"Bank Transfer","Los Angeles","CA","Delivered"],
+["11","2024-08-06","Panamera 4",2023,104500,"Credit Card","Miami","FL","Cancelled"],
+["12","2024-07-11","911 Carrera S",2020,96300,"Lease","New York","NY","Delivered"],
+["13","INVALID","Cayenne E-Hybrid",2022,89750,"Wire Transfer","San Diego","CA","Pending Approval"],
+["14","2024-08-19","718 Boxster",2021,73500,"Debit Card","Chicago","IL","Shipped"],
+["15","2024-09-02","Macan GTS",2024,95000,"Financing","Phoenix","AZ","In Transit"],
+["16","2024-09-17","Taycan Turbo",2023,153200.5,"ACH Payment","Dallas","TX","Delivered"],
+["17","INVALID","911 GT3",2024,241000,"Wire Transfer","Las Vegas","NV","Pending"],
+["18","2024-05-11","Panamera Turbo S",2022,132000,"Cash","San Jose","CA","Delivered"],
+["19","2024-12-12","Cayenne Turbo GT",2024,188000,"Crypto Payment","Houston","TX","Awaiting Delivery"],
+["20","2024-12-25","911 Carrera Cabriolet",2023,127800,"Credit Card","Atlanta","GA","Delivered"],
+["21","2025-01-06","Macan",2021,58900,"Bank Transfer","Orlando","FL","Pending"],
+["22","INVALID","718 Spyder RS",2024,164000,"Financing","Portland","OR","In Transit"],
+["23","2025-02-14","Taycan Cross Turismo",2023,118500,"Wire Transfer","Charlotte","NC","Delivered"],
+["24","INVALID","Cayenne S",2022,91300,"Credit Card","Nashville","TN","Pending"],
+["25","2025-03-21","911 Targa 4S",2024,158750,"Lease","Minneapolis","MN","Delivered"],
+["26","2025-03-28","Panamera",2020,72000,"Bank Transfer","Philadelphia","PA","Cancelled"],
+["27","2025-04-09","Macan Electric",2025,86500,"Wire Transfer","San Antonio","TX","Delivered"],
+["28","INVALID","911 Dakar",2024,270000,"Cash","Salt Lake City","UT","Awaiting Pickup"],
+["29","2025-05-12","Taycan GTS",2023,139000,"Financing","Raleigh","NC","In Transit"],
+["30","2025-06-18","Cayenne",2021,76800,"Credit Card","Detroit","MI","Delivered"],
+["31","INVALID","718 Cayman GT4 RS",2024,173600,"Wire Transfer","Columbus","OH","Pending"],
+["32","2025-07-07","911 Carrera GTS",2022,119900,"Cash","Indianapolis","IN","Delivered"],
+["33","2025-07-22","Panamera 4 E-Hybrid",2023,109250,"Lease","Fort Worth","TX","In Transit"],
+["34","2025-08-14","Macan T",2022,82000,"Wire Transfer","Jacksonville","FL","Delivered"],
+["35","2025-09-01","Taycan Turbo S",2025,214000,"Crypto Payment","San Diego","CA","Pending Review"],
+["36","INVALID","911 Carrera",2024,124500,"Credit Card","Tampa","FL","Delivered"],
+["37","2025-09-18","Cayenne S",2023,98200,"Bank Transfer","Sacramento","CA","Pending"],
+["38","2025-10-04","Macan",2022,67500,"Financing","Cleveland","OH","Delivered"],
+["39","2025-10-12","Taycan",2025,116900,"Wire Transfer","Milwaukee","WI","In Transit"],
+["40","2025-10-29","Panamera 4S",2024,112000,"Cash","Kansas City","MO","Delivered"],
+["41","2025-02-11","718 Boxster",2021,74000,"Debit Card","Omaha","NE","Cancelled"],
+["42","2025-11-16","911 Turbo",2024,198300,"Wire Transfer","Albuquerque","NM","Awaiting Delivery"],
+["43","INVALID","Cayenne Coupe",2023,103750,"Wire Transfer","Tucson","AZ","Pending Approval"],
+["44","INVALID","Macan GTS",2024,93600,"Financing","Fresno","CA","Shipped"],
+["45","2025-12-07","Taycan 4S",2025,129000,"ACH Payment","Virginia Beach","VA","In Transit"],
+["46","2025-12-22","Panamera Turbo",2022,136000,"Credit Card","Colorado Springs","CO","Delivered"],
+["47","INVALID","911 GT3 RS",2024,286500,"Wire Transfer","Arlington","TX","Pending"],
+["48","2026-01-08","Cayenne E-Hybrid",2023,92800,"Lease","Bakersfield","CA","Delivered"],
+["49","2026-01-15","Macan T",2022,72400,"Cash","Mesa","AZ","Awaiting Pickup"],
+["50","2026-01-28","Taycan Turbo",2025,158500,"Crypto Payment","Atlanta","GA","Delivered"],
+["51","2026-02-03","718 Cayman",2021,69900,"Bank Transfer","Long Beach","CA","Pending"],
+["52","INVALID","911 Targa 4",2024,141250,"Financing","Oakland","CA","In Transit"],
+["53","2026-02-19","Panamera",2020,71500,"Wire Transfer","Tulsa","OK","Delivered"],
+["54","2026-02-25","Cayenne Turbo",2023,146800,"Credit Card","Wichita","KS","Pending"],
+["55","2026-03-01","Macan Electric",2025,89700,"Lease","New Orleans","LA","Delivered"],
+["56","2026-03-14","911 Carrera S",2022,104600,"Bank Transfer","Honolulu","HI","Cancelled"],
+["57","INVALID","Taycan GTS",2024,142000,"Wire Transfer","Anaheim","CA","Delivered"],
+["58","2026-04-08","Cayenne",2021,78400,"Cash","Henderson","NV","Awaiting Review"],
+["59","INVALID","718 Spyder RS",2025,169000,"Financing","Lexington","KY","In Transit"],
+["60","2026-04-21","911 Dakar",2024,268900,"Credit Card","Riverside","CA","Delivered"],
+["61","2026-04-29","Panamera 4",2023,101300,"Wire Transfer","Corpus Christi","TX","Pending"],
+["62","2026-05-05","Macan S",2021,66750,"Cash","St. Louis","MO","Delivered"],
+["63","2026-05-14","Taycan Cross Turismo",2024,127900,"Lease","Pittsburgh","PA","In Transit"],
+["64","2026-05-23","Cayenne Turbo GT",2025,200000,"Wire Transfer","Cincinnati","OH","Delivered"],
+["65","2026-06-02","911 Carrera Cabriolet",2023,132000,"Crypto Payment","Anchorage","AK","Pending Review"],
+["66","2026-06-15","718 Cayman GT4 RS",2024,176400,"Credit Card","Plano","TX","Delivered"],
+["67","INVALID","Panamera 4 E-Hybrid",2022,108500,"Bank Transfer","Newark","NJ","Cancelled"],
+["68","2026-07-07","Macan",2021,59000,"Financing","Greensboro","NC","Awaiting Delivery"],
+["69","2026-07-20","Taycan Turbo S",2025,218000,"Wire Transfer","Lincoln","NE","Pending"],
+["70","INVALID","Cayenne S",2024,99950,"Debit Card","Jersey City","NJ","Delivered"],
+["71","2026-04-08","911 Carrera GTS",2024,121750,"Credit Card","Chandler","AZ","Delivered"],
+["72","2026-08-18","718 Boxster GTS",2023,91500,"Lease","Reno","NV","Shipped"],
+["73","2026-08-31","Panamera Turbo S",2022,134000,"Wire Transfer","Buffalo","NY","In Transit"],
+["74","2026-09-09","Macan GTS",2024,96800,"ACH Payment","Durham","NC","Delivered"],
+["75","2026-09-17","Taycan 4S",2025,131600,"Wire Transfer","Laredo","TX","Pending Approval"],
+["76","2026-09-28","Cayenne E-Hybrid",2023,94300,"Cash","Madison","WI","Delivered"],
+["77","2026-10-06","911 Turbo S",2025,242000,"Crypto Payment","Lubbock","TX","Awaiting Pickup"],
+["78","2026-10-16","718 Cayman S",2022,82750,"Credit Card","Toledo","OH","Cancelled"],
+["79","2026-10-29","Macan Electric",2026,91300,"Wire Transfer","Irvine","CA","Delivered"],
+["80","2026-11-03","Panamera",2021,79900,"Financing","Garland","TX","Pending"],
+["81","INVALID","Cayenne Coupe",2024,111000,"Bank Transfer","Irving","TX","In Transit"],
+["82","2026-12-11","911 Targa 4S",2023,156500,"Cash","Chesapeake","VA","Delivered"],
+["83","2026-12-24","Taycan",2025,119900,"Lease","Scottsdale","AZ","Pending"],
+["84","INVALID","Macan T",2022,73200,"Wire Transfer","Norfolk","VA","Delivered"],
+["85","2026-12-28","911 GT3",2024,224000,"Wire Transfer","Boise","ID","Awaiting Delivery"],
+["86","2027-01-15","911 Carrera",2024,126900,"Credit Card","Orlando","FL","Delivered"],
+["87","2027-01-29","Cayenne",2023,84500,"Bank Transfer","San Jose","CA","Pending"],
+["88","2027-02-11","Macan S",2022,69800,"Financing","Tampa","FL","Delivered"],
+["89","INVALID","Taycan 4S",2025,132700,"Wire Transfer","Denver","CO","In Transit"],
+["90","2027-03-05","Panamera",2021,81000,"Cash","Austin","TX","Delivered"],
+["91","2027-03-18","718 Cayman",2023,78900,"Debit Card","Seattle","WA","Cancelled"],
+["92","2027-04-02","911 Turbo S",2026,249300,"Wire Transfer","Boston","MA","Awaiting Delivery"],
+["93","INVALID","Cayenne Coupe",2024,108750,"Wire Transfer","Phoenix","AZ","Pending Approval"],
+["94","INVALID","Macan Electric",2026,92600,"Financing","Chicago","IL","Shipped"],
+["95","2027-05-12","Taycan Turbo",2025,164000,"ACH Payment","Dallas","TX","In Transit"],
+["96","2027-05-27","Panamera 4S",2024,119000,"Credit Card","San Francisco","CA","Delivered"],
+["97","INVALID","911 GT3",2026,232500,"Wire Transfer","Las Vegas","NV","Pending"],
+["98","2027-06-18","Cayenne E-Hybrid",2023,96800,"Lease","Charlotte","NC","Delivered"],
+["99","2027-07-03","Macan T",2022,74400,"Cash","Mesa","AZ","Awaiting Pickup"],
+["100","2027-07-22","Taycan GTS",2025,148500,"Crypto Payment","Atlanta","GA","Delivered"],
+["101","2027-08-08","718 Boxster",2021,71900,"Bank Transfer","Long Beach","CA","Pending"],
+["102","INVALID","911 Targa 4",2024,143250,"Financing","Oakland","CA","In Transit"],
+["103","2027-09-19","Panamera Turbo",2020,137500,"Wire Transfer","Tulsa","OK","Delivered"],
+["104","2027-09-25","Cayenne Turbo GT",2025,204800,"Credit Card","Wichita","KS","Pending"],
+["105","2027-10-01","911 Dakar",2024,271700,"Lease","New Orleans","LA","Delivered"]
+].map(r => ({
+  id: r[0], date: r[1], model: r[2], yearModel: r[3], price: r[4],
+  pay: r[5], city: r[6], state: r[7], status: r[8],
+  saleYear: r[1] === "INVALID" ? "Data inválida" : r[1].slice(0, 4),
+  family: r[2].startsWith("911") ? "911" : r[2].startsWith("718") ? "718" : r[2].split(" ")[0]
+}));
+
+const money = n => n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+const fill = (id, values) => {
+  const el = document.getElementById(id);
+  el.innerHTML = `<option value="">Todos</option>` + values.map(v => `<option>${v}</option>`).join("");
+};
+fill("fModel", [...new Set(rows.map(r => r.model))].sort());
+fill("fYear", [...new Set(rows.map(r => r.saleYear))].sort());
+fill("fCity", [...new Set(rows.map(r => r.city))].sort());
+fill("fPay", [...new Set(rows.map(r => r.pay))].sort());
+
+function bars(target, pairs) {
+  const max = Math.max(...pairs.map(p => p[1]), 1);
+  document.getElementById(target).innerHTML = pairs.map(([name, value, extra]) => `
+    <div class="bar-row">
+      <span>${name}</span>
+      <div class="track"><div class="fill" style="width:${value / max * 100}%"></div></div>
+      <strong>${money(value)}</strong>
+    </div>`).join("") || "<p class='note'>Nenhum registro neste filtro.</p>";
+}
+
+function group(list, key) {
+  const map = new Map();
+  list.forEach(r => {
+    const k = r[key];
+    const cur = map.get(k) || { revenue: 0, count: 0 };
+    cur.revenue += r.price;
+    cur.count += 1;
+    map.set(k, cur);
+  });
+  return [...map.entries()].sort((a, b) => b[1].revenue - a[1].revenue);
+}
+
+function render() {
+  const model = fModel.value, year = fYear.value, city = fCity.value, pay = fPay.value;
+  const filtered = rows.filter(r =>
+    (!model || r.model === model) &&
+    (!year || r.saleYear === year) &&
+    (!city || r.city === city) &&
+    (!pay || r.pay === pay)
+  );
+  const financial = filtered.filter(r => r.status !== "Cancelled" && r.price > 0);
+  const revenue = financial.reduce((s, r) => s + r.price, 0);
+  const invalid = filtered.filter(r => r.date === "INVALID");
+  document.getElementById("kpis").innerHTML = [
+    ["Vendas no filtro", filtered.length],
+    ["Receita sem canceladas", money(revenue)],
+    ["Preço médio", financial.length ? money(revenue / financial.length) : "—"],
+    ["Datas inválidas", invalid.length]
+  ].map(([l, v]) => `<article class="card"><div class="note">${l}</div><div class="num">${v}</div></article>`).join("");
+
+  bars("models", group(financial, "family").slice(0, 8).map(([k, v]) => [k, v.revenue]));
+  bars("states", group(financial, "state").slice(0, 8).map(([k, v]) => [k, v.revenue]));
+  const payRows = group(financial, "pay").map(([k, v]) =>
+    `<tr><td>${k}</td><td>${v.count}</td><td>${money(v.revenue)}</td><td>${money(v.revenue / v.count)}</td></tr>`).join("");
+  document.getElementById("pays").innerHTML = `<table><tr><th>Método</th><th>Vendas</th><th>Receita</th><th>Preço médio</th></tr>${payRows}</table>`;
+  document.getElementById("review").innerHTML = `<tr><th>ID</th><th>Motivo</th><th>Modelo</th><th>Cidade</th><th>Preço</th><th>Status</th></tr>` +
+    filtered.filter(r => r.date === "INVALID" || r.status === "Cancelled").map(r =>
+      `<tr><td>${r.id}</td><td>${r.date === "INVALID" ? "Data inválida" : "Cancelada"}</td><td>${r.model}</td><td>${r.city}</td><td>${money(r.price)}</td><td>${r.status}</td></tr>`
+    ).join("");
+}
+["fModel","fYear","fCity","fPay"].forEach(id => document.getElementById(id).addEventListener("change", render));
+render();
+</script>
+</body>
+</html>
